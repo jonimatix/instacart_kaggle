@@ -133,10 +133,12 @@ write.csv(submissions, 'submissions/001_immediately_previous_order_reordered_pro
 
 
 
+# lets try out an "All None" file for kicks to see what that gives us.
+all_none_submission <- data.frame(order_id=submissions$order_id, products="None", stringsAsFactors = F)
+head(all_none_submission)
+sapply(all_none_submission, class)
 
-
-
-
+write.csv(all_none_submission, 'submissions/002_all_None.csv', row.names = F)
 
 
 

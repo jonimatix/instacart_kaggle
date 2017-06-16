@@ -48,5 +48,20 @@ kaggle competition for instacart market basket analysis
 
 Note that there are some opportunities for some text analytics within the product, aisle, and department names. The keyword **Organic** seems to have proven useful to some people's models on Kaggle.
 
+# Submissions
+
+## Baseline
+
+I just wrote my own baseline script (check the submission_descriptions.csv file for scriptfile name). This baseline script appears to be identical to the one someone
+else wrote, because now my score is shared with about 400 other people. I'm wondering exactly how difficult it will be to beat this simple (yet effective) script.
+
+
+## All "None"
+
+I think it'll be useful (especially in these early days of the competition when I don't have any plans for using a lot of submissions) to submit a file of
+all "None" values to get a feel for about how many of these things have a "None" value. Eventually I might want to build a model to see if I can predict the probability
+for which of the test order_id's should receive a "None" value. Then I can start the threshold off incredibly low, and raise it little by little, making submissions 
+along the way. I should then be able to tell where the "drop off" in accuracy is. The accuracy will never actually decrease, but the rate at which it is increasing will slow down
+significantly. In the baseline file submission, about 7% of orders were given the value of "None". 
 
 	
