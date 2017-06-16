@@ -152,6 +152,7 @@ rm(denorm1, denorm2, denorm3, denorm4, denorm5, denorm6)
 gc()
 
 
+file.exists('input/denorm.rds')
 saveRDS(denorm, 'input/denorm.rds')
 
 
