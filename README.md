@@ -1,6 +1,11 @@
 # instacart_kaggle
 kaggle competition for instacart market basket analysis
 
+This is an extremely interesting competition to me because it isn't your average multi-classification problem. There are potentially up to 50,000 classes 
+that can be predicted for each user_id... obviously we can limit that to simply what they have ordered in the past or the "None" value that is a 
+placeholder designed to represent an order with entirely new products, but still! This is a type of machine learning problem that I think will require 
+several layers of models to be able to capture the user's next virtual "shopping cart," which is interesting to me.
+
 
 # Initial Thoughts
 
@@ -58,10 +63,38 @@ else wrote, because now my score is shared with about 400 other people. I'm wond
 
 ## All "None"
 
+**this scored 0.063** -- I think that means about 6.3% of the orders are `None`.
+
 I think it'll be useful (especially in these early days of the competition when I don't have any plans for using a lot of submissions) to submit a file of
 all "None" values to get a feel for about how many of these things have a "None" value. Eventually I might want to build a model to see if I can predict the probability
 for which of the test order_id's should receive a "None" value. Then I can start the threshold off incredibly low, and raise it little by little, making submissions 
 along the way. I should then be able to tell where the "drop off" in accuracy is. The accuracy will never actually decrease, but the rate at which it is increasing will slow down
 significantly. In the baseline file submission, about 7% of orders were given the value of "None". 
+
+**desired exploratory analysis for this section**
+- how consistent are some people's shopping times (day/hour)
+- how consistent are some people's days between shopping?
+- do user's shopping carts with zero reordered products tend to occur at a given time (or maybe outside that user's usual shopping hour/day)?
+- 
+
+**potential features for predicting the "None"s**
+- 
+
+
+## Time Between Orders
+
+Next, I'd like to look at which (if any) products have a reasonably predictible time-between-repurchases. I'm not even 100% sure if this is a reasonable thing to 
+look into, because the competition rules say that these orders were randomly sampled, so there might be some ridiculously strange days between order times. The fact 
+that we're given `order_number` leads me to believe that these actually are **consecutive** `order_id`s, but that might not be the case. There could be one (or even several)
+orders between these given `order_id`s. I will proceed with this analysis as if there are no missing `order_id`s, but I just wanted to acknowledge that as a potential risk/flaw
+to this strategy.
+
+**logical units necessary for this analysis**
+- filter priors down to the products that have been ordered at least twice by a user
+- for each user, determine the mean/median days between purchasing that item
+
+from there, we have something that is useful in the **exploratory** sense, but not yet for the **ML / practical** sense. I would like to cross reference 
+these days between reorder and the time of day in which the purchase is made.
+
 
 	
