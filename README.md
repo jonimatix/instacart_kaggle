@@ -11,6 +11,9 @@ several layers of models to be able to capture the user's next virtual "shopping
 
 ## Understanding the datasets
 
+** There are 131,209 orders dedicated to train and 75,000 (length of submission file) dedicated to "test". **
+
+
 - **orders.csv** contains every single order in the data space. One row per order.
 	* 3,421,083 rows x 7 cols
 	* order_id
