@@ -50,7 +50,9 @@ library(ggplot2)
 library(viridis)
 
 
-
+list.files('input')
+# order_prior <- read.csv('input/order_products__prior.csv', stringsAsFactors = F)
+order_prior <- readRDS('input/order_prior.rds')
 orders <- readRDS('input/orders.rds')
 orders$order_hw <- ((orders$order_dow * 24) + orders$order_hour_of_day)
 orders_train <- orders[orders$eval_set == 'train',]
@@ -62,8 +64,6 @@ denorm_train <- denorm[denorm$eval_set == 'train',]
 # so we have day of the week and hour of day...
 # this can be converted to an "hour of week" figure which I think will be very useful for more granularity
 # if we don't see anything there, then we'll take a step back up to either day of week or hour of day
-
-
 
 
 
@@ -98,6 +98,69 @@ ot_dhg <- dplyr::group_by(orders_train, order_dow, order_hour_of_day) %>%
 ot_dhg$percent_zero_reord <- (ot_dhg$count_of_zero_reorder_orders / ot_dhg$count_of_all_orders) * 100
 
 
+
+
+
+
+#' let me be clear of my intentions here. I want to isolate the priors that are immediately before the
+#' "train" and the "test" orders (but keep these groups separate). Then run the heatmap plot as done above.
+orders <- dplyr::arrange(orders, user_id, order_number)
+orders2 <- dplyr::group_by(orders, user_id) %>%
+    dplyr::mutate(prev_order = lag(x=order_id, n=1, order_by=order_number)) %>%
+    dplyr::ungroup() %>%
+    # dplyr::select(order_id, eval_set, prev_order) %>%  # I don't like this... it forces a join later on
+    data.frame()
+
+
+# these aren't needed unless doing detailed analysis, not sure why I built these...
+# orders_train_min1 <- orders2[orders2$eval_set == 'train',]
+# denorm_train_min1 <- denorm[denorm$order_id %in% orders_train_min1$prev_order,]
+
+
+# these are the order_id's of interest
+order_id_train_m1 <- orders2$prev_order[orders2$eval_set == 'train']
+order_id_test_m1 <- orders2$prev_order[orders2$eval_set == 'test']
+
+
+# this is the orders data.frame filtered to the order_id's of interest
+orders_train_m1 <- orders2[orders2$order_id %in% order_id_train_m1,]
+orders_test_m1 <- orders2[orders2$order_id %in% order_id_test_m1,]
+
+
+# these are the order details necessary for determinine which orders had reordered products or not
+denorm_train_m1 <- denorm[denorm$order_id %in% order_id_train_m1,]
+denorm_test_m1 <- denorm[denorm$order_id %in% order_id_test_m1,]
+
+
+# now group by to find the count of reordered products per order_id
+reorder_per_order_train_m1 <- dplyr::group_by(denorm_train_m1, order_id) %>%
+    dplyr::summarise(count_reordered_prods = sum(reordered))
+reorder_per_order_test_m1 <- dplyr::group_by(denorm_test_m1, order_id) %>%
+    dplyr::summarise(count_reordered_prods = sum(reordered))
+
+
+# merge in the number of reordered products
+orders_train_m1_2 <- merge(x=orders_train_m1, y=reorder_per_order_train_m1, by='order_id', all=T)
+orders_test_m1_2 <- merge(x=orders_test_m1, y=reorder_per_order_test_m1, by='order_id', all=T)
+
+
+# order train (minus 1) - day hour groups
+otrain_m1_dhg <- dplyr::group_by(orders_train_m1_2, order_dow, order_hour_of_day) %>%
+    dplyr::summarise(count_of_zero_reorder_orders = sum(count_reordered_prods == 0),
+                     count_of_all_orders = n_distinct(order_id))
+otest_m1_dhg <- dplyr::group_by(orders_test_m1_2, order_dow, order_hour_of_day) %>%
+    dplyr::summarise(count_of_zero_reorder_orders = sum(count_reordered_prods == 0),
+                     count_of_all_orders = n_distinct(order_id))
+
+
+# now calculate the percent of orders with zero reordered products
+otrain_m1_dhg$percent_zero_reord <- (otrain_m1_dhg$count_of_zero_reorder_orders / otrain_m1_dhg$count_of_all_orders) * 100
+otest_m1_dhg$percent_zero_reord <- (otest_m1_dhg$count_of_zero_reorder_orders / otest_m1_dhg$count_of_all_orders) * 100
+
+
+heatmap_desc <- "Percent of Orders with No Reordered Products by Day / Hour"
+
+
 # This is actually a pretty interesting plot..
 ggplot(ot_dhg, aes(x=order_hour_of_day, y=order_dow, fill=percent_zero_reord)) +
     geom_tile(color='White', size=0.1) +
@@ -113,42 +176,18 @@ ggplot(ot_dhg, aes(x=order_hour_of_day, y=order_dow, fill=percent_zero_reord)) +
     #' We should also do that for the test - 1 set as well.
 
 
+ggplot(otrain_m1_dhg, aes(x=order_hour_of_day, y=order_dow, fill=percent_zero_reord)) +
+    geom_tile(color='White', size=0.1) +
+    scale_fill_viridis(name="Percent zero reorders") +
+    coord_equal() + ggtitle("Train Minus-1 Orders: Percent of Zero-Reorder Orders by Day / Hour")
 
-#' let me be clear of my intentions here. I want to isolate the priors that are immediately before the
-#' "train" and the "test" orders (but keep these groups separate). Then run the heatmap plot as done above.
-orders <- dplyr::arrange(orders, user_id, order_number)
-orders2 <- dplyr::group_by(orders, user_id) %>%
-    dplyr::mutate(prev_order = lag(x=order_id, n=1, order_by=order_number)) %>%
-    dplyr::ungroup() %>%
-    dplyr::select(order_id, eval_set, prev_order) %>%
-    data.frame()
-
-
-# these aren't needed unless doing detailed analysis, not sure why I built these...
-# orders_train_min1 <- orders2[orders2$eval_set == 'train',]
-# denorm_train_min1 <- denorm[denorm$order_id %in% orders_train_min1$prev_order,]
+ggplot(otest_m1_dhg, aes(x=order_hour_of_day, y=order_dow, fill=percent_zero_reord)) +
+    geom_tile(color='White', size=0.1) +
+    scale_fill_viridis(name="Percent zero reorders") +
+    coord_equal() + ggtitle("Test Minus-1 Orders: Percent of Orders with No Reordered Products by Day / Hour")
 
 
-# these are the order_id's of interest
-order_id_train_m1 <- orders2$prev_order[orders2$eval_set == 'train']
-order_id_test_m1 <- orders2$prev_order[orders2$eval_set == 'test']
 
-# this is the orders data.frame filtered to the order_id's of interest
-orders_train_m1 <- orders2[orders2$order_id %in% order_id_train_m1,]
-orders_test_m1 <- orders2[orders2$order_id %in% order_id_test_m1,]
-
-denorm_train_m1 <- denorm[denorm$order_id %in% order_id_train_m1,]
-denorm_test_m1 <- denorm[denorm$order_id %in% order_id_test_m1,]
-
-
-# this is where I was!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-reorder_per_order_train_m1 <- dplyr::group_by(denorm_train_m1)
-
-
-# order train (minus 1) - day hour groups
-otrain_m1_dhg <- dplyr::group_by(orders_train_m1, order_dow, order_hour_of_day) %>%
-    dplyr::summarise(count_of_zero_reorder_orders = sum(count_reordered_prods == 0),
-                     count_of_all_orders = n_distinct(order_id))
 
 
 
