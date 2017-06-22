@@ -189,6 +189,28 @@ ggplot(otest_m1_dhg, aes(x=order_hour_of_day, y=order_dow, fill=percent_zero_reo
 
 
 
+# --- modeling -------------------
+
+# need to start modeling the none's
+# check plot_001_percent_orders_with_zero_reordered_prods.R
+
+#' being able to predict which of the ~6% orders should have 'none' I think will be huge in setting
+#' people apart on the leaderboard. 
+#' 
+#' Features:
+#' - hour
+#' - day
+#' - hour * day (hour in week)
+#' - user's number of previous orders
+#' - user's average number of days between orders
+#' - user's stdev or variance of days between orders
+#' - user's historical total reordered / total non-reordered historically (meh)
+#' - user's last (n) total reordered / total non-reordered per order
+#' - user's average hour in week to shop
+#' - user's stdev/variance in hour in week to shop
+#' - breakdown user's departmental historical purchases in percentages
+
+
 
 
 

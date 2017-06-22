@@ -95,10 +95,8 @@ orders_test <- orders[orders$eval_set == 'test',]
 # 3) sum up the total number of reordered items per order_id in train
 train_reordered_counts <- dplyr::group_by(order_products_train, order_id) %>%
     dplyr::summarise(count_reordered_products = sum(reordered)) %>%
-    data.frame()
-
-# 4) map the total reordered items per order_id back to the isolated order_ids
-orders_train <- merge(x=orders_train, y=train_reordered_counts, by="order_id", all=T)
+    data.frame() %>%  
+    dplyr::right_join(orders_train)  # 4)
 
 
 # Minor detour! let's see if there are patterns between count of reordered products and order hour-in-week
@@ -217,8 +215,252 @@ ggplot(otest_m1_dhg, aes(x=order_hour_of_day, y=order_dow, fill=percent_zero_reo
 
 
 
+# this is cool, but not as useful as I had thought it would be, because we need to group by user_id beforehand
+x <- 1:10  # the values representing the number of records "back" we want to look, starting at 1
+y <- 31:40 # the actual values that we're applying the lag to
+
+# there must be a better way to do this, yea?
+lag(y, 1)
+lag(y, 2)
+
+# create a wrapper! the wrapper switches the order of the parameters so we can use "apply" functions effectively
+lagwrap <- function(numb, xvec, ord_by=NULL) {
+    if(is.null(ord_by)) {
+        return(dplyr::lag(xvec, numb))
+    } else {
+        return(dplyr::lag(xvec, numb, ord_by))
+    }
+}
+
+sapply(x, lagwrap, y)
 
 
 
 
+orders_lagged <- orders %>%
+    dplyr::arrange(user_id, order_number) %>%
+    dplyr::group_by(user_id) %>%
+    dplyr::mutate(prev_order1 = lag(order_id, 1, order_by=order_number),
+                  prev_order2 = lag(order_id, 2, order_by=order_number),
+                  prev_order3 = lag(order_id, 3, order_by=order_number),
+                  prev_order4 = lag(order_id, 4, order_by=order_number),
+                  prev_order5 = lag(order_id, 5, order_by=order_number)) %>%
+    dplyr::ungroup()
+
+
+
+order_id_test <- orders_lagged$order_id[orders_lagged$eval_set == 'test']
+order_id_train <- orders_lagged$order_id[orders_lagged$eval_set == 'train']
+order_id_test_m1 <- orders_lagged$prev_order1[orders_lagged$eval_set == 'test']
+order_id_test_m2 <- orders_lagged$prev_order2[orders_lagged$eval_set == 'test']
+order_id_test_m3 <- orders_lagged$prev_order3[orders_lagged$eval_set == 'test']
+order_id_train_m1 <- orders_lagged$prev_order1[orders_lagged$eval_set == 'train']
+order_id_train_m2 <- orders_lagged$prev_order2[orders_lagged$eval_set == 'train']
+order_id_train_m3 <- orders_lagged$prev_order3[orders_lagged$eval_set == 'train']
+
+
+
+# can we define a function for this?
+calc_percent_zero_reordered <- function(p_order_ids, p_order_details, p_order_header) {
+    # p_order_ids     - the order id's we are interested in for this analysis
+    # p_order_details - ALL order details; the function will be responsible for isolating what we need
+    # p_order_header  - header-level order information such as day-of-week, hour-of-day, etc.
+    
+    
+    print("Isolating the necessary order details...")
+    dets <- p_order_details[p_order_details$order_id %in% p_order_ids, ]
+    ords <- p_order_header[p_order_header$order_id %in% p_order_ids, ]
+    
+    
+    print("Grouping and calculating the percent of orders with zero reordered products...")
+    dets_sumreorder <- dplyr::group_by(dets, order_id) %>%
+        dplyr::summarise(reordered_products_per_order = sum(reordered)) %>%
+        dplyr::ungroup() %>%
+        dplyr::right_join(ords) %>%
+        dplyr::group_by(order_dow, order_hour_of_day) %>%
+        dplyr::summarise(
+            zero_reordered_prods = sum(reordered_products_per_order == 0),
+            all_orders = n_distinct(order_id)
+        ) %>%
+        dplyr::mutate(percent_zero_reordered = (zero_reordered_prods / all_orders) * 100)
+    
+    return(dets_sumreorder)
+}
+
+
+# DRY: consistent plot labels for this first batch of plots
+plot_subtitle_percent_zero_reorder <- "Percent of Orders with Zero Reordered Products"
+plot_zero_reorder_x <- "Hour within Day"
+plot_zero_reorder_y <- "Day within Week"
+plot_zero_reorder_fill <- "Percent of Orders"
+
+
+# calling the function we just wrote to produce the plot-ready data.frame
+dow_hod_test_m1 <- calc_percent_zero_reordered(order_id_test_m1, order_products_prior, orders)
+
+    # plotting the data
+    ggplot(dow_hod_test_m1, aes(x=order_hour_of_day, y=order_dow, fill=percent_zero_reordered)) +
+        geom_tile(color='White', size=0.1) +
+        scale_fill_viridis(name=plot_zero_reorder_fill) +
+        labs(x=plot_zero_reorder_x, y=plot_zero_reorder_y) +
+        coord_equal() + ggtitle(paste0("Test Minus-1 Orders: ", plot_subtitle_percent_zero_reorder))
+
+dow_hod_test_m2 <- calc_percent_zero_reordered(order_id_test_m2, order_products_prior, orders)
+
+    ggplot(dow_hod_test_m2, aes(x=order_hour_of_day, y=order_dow, fill=percent_zero_reordered)) +
+        geom_tile(color='White', size=0.1) +
+        scale_fill_viridis(name=plot_zero_reorder_fill) +
+        labs(x=plot_zero_reorder_x, y=plot_zero_reorder_y) +
+        coord_equal() + ggtitle(paste0("Test Minus-2 Orders: ", plot_subtitle_percent_zero_reorder))
+
+dow_hod_test_m3<- calc_percent_zero_reordered(order_id_test_m3, order_products_prior, orders)
+    
+    ggplot(dow_hod_test_m3, aes(x=order_hour_of_day, y=order_dow, fill=percent_zero_reordered)) +
+        geom_tile(color='White', size=0.1) +
+        scale_fill_viridis(name=plot_zero_reorder_fill) +
+        labs(x=plot_zero_reorder_x, y=plot_zero_reorder_y) +
+        coord_equal() + ggtitle(paste0("Test Minus-3 Orders: ", plot_subtitle_percent_zero_reorder))
+
+# now train
+dow_hod_train <- calc_percent_zero_reordered(order_id_train, order_products_train, orders)
+
+    ggplot(dow_hod_train, aes(x=order_hour_of_day, y=order_dow, fill=percent_zero_reordered)) +
+        geom_tile(color='White', size=0.1) +
+        scale_fill_viridis(name=plot_zero_reorder_fill) +
+        labs(x=plot_zero_reorder_x, y=plot_zero_reorder_y) +
+        coord_equal() + ggtitle(paste0("Train Orders: ", plot_subtitle_percent_zero_reorder))
+        
+    
+dow_hod_train_m1 <- calc_percent_zero_reordered(order_id_train_m1, order_products_prior, orders)
+    
+    ggplot(dow_hod_train_m1, aes(x=order_hour_of_day, y=order_dow, fill=percent_zero_reordered)) +
+        geom_tile(color='White', size=0.1) +
+        scale_fill_viridis(name=plot_zero_reorder_fill) +
+        labs(x=plot_zero_reorder_x, y=plot_zero_reorder_y) +
+        coord_equal() + ggtitle(paste0("Train Minus-2 Orders: ", plot_subtitle_percent_zero_reorder))
+    
+        #' maybe it isn't a good idea to calculate the percent of orders with zero reordered products. This is
+        #' a little bit misleading, since those are the times of the day/week where there are fewest orders total, 
+        #' so they are more susceptible to volatile data, plus there appears to be no distinct pattern. 
+        #' 
+        #' I think it would be better to determine the percent of products which are reorders based on the time
+        #' the products were ordered
+    
+    
+    
+    
+    
+# percent of products ordered within a given day/hour slot that are reordered
+    
+
+order_details <- rbind(order_products_prior, order_products_train)
+
+library(data.table)
+setDT(order_details); setDT(orders)
+order_details2 <- merge(x=order_details, y=orders, by='order_id', all.x=T, all.y=F)    
+setDF(order_details2)    
+
+sapply(order_details2, function(x) sum(is.na(x)))
+
+head(order_details2)
+
+
+# DRY: consistent plot labels
+plot_subtitle_perc_prods_reordered <- "Percent of Products Reordered in Day/Hour Slot"
+plot_perc_prods_reorder_x <- "Hour within Day"
+plot_perc_prods_reorder_y <- "Day within Week"
+plot_perc_prods_reorder_fill <- "Percent of Products"
+
+
+
+# turn this into a function
+calc_percent_prods_reordered <- function(p_order_ids, p_order_details) {
+    
+    print("isolating the required order details...")
+    dets <- p_order_details[p_order_details$order_id %in% p_order_ids, ]
+    
+    print("grouping and calculating the percent of products reordered...")
+    grpd <- dplyr::group_by(dets, order_dow, order_hour_of_day) %>%
+        dplyr::summarise(
+            count_reordered = sum(reordered),
+            count_all = n()
+        ) %>% ungroup() %>%
+        dplyr::mutate(percent_reordered = (count_reordered / count_all) * 100)
+      
+    return(grpd)
+}
+    
+
+# test minus 1
+d_test_m1_grp <- calc_percent_prods_reordered(order_id_test_m1, order_details2)
+
+    ggplot(d_test_m1_grp, aes(x=order_hour_of_day, y=order_dow, fill=percent_reordered)) +
+        geom_tile(color='White', size=0.1) +
+        scale_fill_viridis(name=plot_perc_prods_reorder_fill) +
+        labs(x=plot_perc_prods_reorder_x, y=plot_perc_prods_reorder_y) +
+        coord_equal() + ggtitle(paste0("Test Minus-1 Orders: ", plot_subtitle_percent_zero_reorder))
+
+    
+# test minus 2
+d_test_m2_grp <- calc_percent_prods_reordered(order_id_test_m2, order_details2)
+    
+    ggplot(d_test_m2_grp, aes(x=order_hour_of_day, y=order_dow, fill=percent_reordered)) +
+        geom_tile(color='White', size=0.1) +
+        scale_fill_viridis(name=plot_perc_prods_reorder_fill) +
+        labs(x=plot_perc_prods_reorder_x, y=plot_perc_prods_reorder_y) +
+        coord_equal() + ggtitle(paste0("Test Minus-2 Orders: ", plot_subtitle_percent_zero_reorder))
+    
+    
+# test minus 3
+d_test_m3_grp <- calc_percent_prods_reordered(order_id_test_m3, order_details2)
+
+    ggplot(d_test_m3_grp, aes(x=order_hour_of_day, y=order_dow, fill=percent_reordered)) +
+        geom_tile(color='White', size=0.1) +
+        scale_fill_viridis(name=plot_perc_prods_reorder_fill) +
+        labs(x=plot_perc_prods_reorder_x, y=plot_perc_prods_reorder_y) +
+        coord_equal() + ggtitle(paste0("Test Minus-3 Orders: ", plot_subtitle_percent_zero_reorder))
+    
+    
+# train
+    d_train_grp <- calc_percent_prods_reordered(order_id_train, order_details2)
+    
+    ggplot(d_train_grp, aes(x=order_hour_of_day, y=order_dow, fill=percent_reordered)) +
+        geom_tile(color='White', size=0.1) +
+        scale_fill_viridis(name=plot_perc_prods_reorder_fill) +
+        labs(x=plot_perc_prods_reorder_x, y=plot_perc_prods_reorder_y) +
+        coord_equal() + ggtitle(paste0("Train Orders: ", plot_subtitle_percent_zero_reorder))
+
+        
+# train minus 1
+    d_train_m1_grp <- calc_percent_prods_reordered(order_id_train_m1, order_details2)
+    
+    ggplot(d_train_m1_grp, aes(x=order_hour_of_day, y=order_dow, fill=percent_reordered)) +
+        geom_tile(color='White', size=0.1) +
+        scale_fill_viridis(name=plot_perc_prods_reorder_fill) +
+        labs(x=plot_perc_prods_reorder_x, y=plot_perc_prods_reorder_y) +
+        coord_equal() + ggtitle(paste0("Train Minus-1 Orders: ", plot_subtitle_percent_zero_reorder))
+    
+    
+# train minus 2
+d_train_m2_grp <- calc_percent_prods_reordered(order_id_train_m2, order_details2)
+    
+    ggplot(d_train_m2_grp, aes(x=order_hour_of_day, y=order_dow, fill=percent_reordered)) +
+        geom_tile(color='White', size=0.1) +
+        scale_fill_viridis(name=plot_perc_prods_reorder_fill) +
+        labs(x=plot_perc_prods_reorder_x, y=plot_perc_prods_reorder_y) +
+        coord_equal() + ggtitle(paste0("Train Minus-2 Orders: ", plot_subtitle_percent_zero_reorder))
+    
+    
+# train minus 2
+d_train_m3_grp <- calc_percent_prods_reordered(order_id_train_m3, order_details2)
+    
+
+    ggplot(d_train_m3_grp, aes(x=order_hour_of_day, y=order_dow, fill=percent_reordered)) +
+        geom_tile(color='White', size=0.1) +
+        scale_fill_viridis(name=plot_perc_prods_reorder_fill) +
+        labs(x=plot_perc_prods_reorder_x, y=plot_perc_prods_reorder_y) +
+        coord_equal() + ggtitle(paste0("Train Minus-3 Orders: ", plot_subtitle_percent_zero_reorder))
+    
+    
+    
 
