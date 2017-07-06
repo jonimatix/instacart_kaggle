@@ -35,3 +35,4 @@ vignettes/*.pdf
 # Taylor's additions to the .gitignore
 input/*
 submissions/*
+.idea/*
