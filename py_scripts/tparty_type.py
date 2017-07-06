@@ -109,9 +109,9 @@ while(True):
 
 
     # PICK CLASSIFICATION SCORING METHOD ------------------------------------------
-    scoring_methods = ['log_loss', 'balanced_accuracy', 'roc_auc']
-    this_scoring_method = random.choice(scoring_methods)
-    print("current scoring method: ", this_scoring_method)
+    #scoring_methods = ['log_loss', 'balanced_accuracy', 'roc_auc']
+    #this_scoring_method = random.choice(scoring_methods)
+    print("current scoring method: ", score_type)
 
 
     """
@@ -134,10 +134,9 @@ while(True):
 
     # BUILD AND RUN THE TPOT -------------------------------------------------------
     my_tpot = TPOTClassifier(generations=25, population_size=50, n_jobs=2, verbosity=2,
-                             scoring=this_scoring_method, cv=5, random_state=1776, warm_start=True)
+                             scoring=score_type, cv=5, random_state=1776, warm_start=True)
 
     my_tpot.fit(x_train, y_train)
-
 
 
     # DETERMINE BEST CV SCORE PIPELINE ----------------------------------------------
@@ -168,7 +167,7 @@ while(True):
     # generate content line regardless of if the file exists already or not
     content_line = str.format("{0}, {1}, {2}, {3}, {4}, {5}, {6}\n",
                               ite, best_pipe_key_no_comma, best_cv, holdout_score,
-                              this_scoring_method, xt_nrows,xt_numb_feats)
+                              score_type, xt_nrows,xt_numb_feats)
 
 
     if os.path.isfile(res_file):
@@ -205,4 +204,5 @@ while(True):
     time.sleep(5)
 
 
+print("we'll never make it here!")
 
