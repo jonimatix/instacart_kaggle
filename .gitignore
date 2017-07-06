@@ -36,3 +36,4 @@ vignettes/*.pdf
 input/*
 submissions/*
 .idea/*
+*.csv
