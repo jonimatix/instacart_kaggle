@@ -32,8 +32,8 @@ print("new dir: ", os.getcwd())
 
 # score_type = "log_loss"
 score_type = str(sys.argv[1])  # scoring type must be passed in to this script
-res_py_dir = "py_scripts/tparty_exported_pipelines" + score_type + "/"
-res_pred_dir = "py_scripts/tparty_exported_test" + score_type + "/"
+res_py_dir = "py_scripts/tparty_exported_pipelines_" + score_type + "/"
+res_pred_dir = "py_scripts/tparty_exported_test_" + score_type + "/"
 
 
 # when life didn't give you dirs, you make them yourself
