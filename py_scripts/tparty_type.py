@@ -1,7 +1,7 @@
 
 
 
-
+# IMPORT MODULES ------------------------------------------------------------------------------------
 import math
 import pandas as pd
 import numpy as np
@@ -13,19 +13,40 @@ import scipy
 import random
 import os
 import time
+import sys
 
 
 
 
+# SET UP WORKING DIRECTORY --------------------------------------------------------------------------
+print("Script setup in progress...")
 print("curr dir: ", os.getcwd())
 os.chdir("C:/Users/tvananne/Documents/personal/github/kaggles/kaggle_instacart")
 print("new dir: ", os.getcwd())
 
 
-# relative file paths
-res_file = "py_scripts/tparty_results.csv"  # the csv with aggregated results
-res_py_file = "py_scripts/tparty_exported_pipelines/tparty_pipeline_id_"
-res_pred_file = "py_scripts/tparty_exported_testpreds/tparty_preds_id_"
+
+
+
+# SET UP FILE PATHS AND DIRECTORIES -------------------------------------------------------------------
+
+# score_type = "log_loss"
+score_type = str(sys.argv[1])  # scoring type must be passed in to this script
+res_py_dir = "py_scripts/tparty_exported_pipelines" + score_type + "/"
+res_pred_dir = "py_scripts/tparty_exported_test" + score_type + "/"
+
+
+# when life didn't give you dirs, you make them yourself
+if not os.path.isdir(res_py_dir):
+    os.mkdir(res_py_dir)
+
+if not os.path.isdir(res_pred_dir):
+    os.mkdir(res_pred_dir)
+
+# other paths
+res_file = "py_scripts/" + score_type +  "_tparty_results.csv"  # the csv with aggregated results
+res_py_file = res_py_dir + score_type + "_tparty_pipeline_" + score_type + "_id_"
+res_pred_file = res_pred_dir + score_type + "_tparty_preds_" + score_type + "_id_"
 train_file = "input/fabienvs_train.csv"
 test_file = "input/fabienvs_test.csv"
 
@@ -33,7 +54,7 @@ test_file = "input/fabienvs_test.csv"
 
 
 # LOAD IN DATA ---------------------------------------------
-
+print("Loading in data...")
 
 # future enhance, "train" needs to be split up according to order id's... so we'll
 # need to leave it the way it is, but group them by order_ids so that we're able to
@@ -78,13 +99,14 @@ print("iterator is currently: ", ite)
 
 
 # WHILE TRUE STARTS HERE ----------------------------------------------------
-
+print("Entering the infinite loop now...")
 while(True):
 
+    print("Loop started for iteration: ", ite)
     this_respyfile = res_py_file + str(ite) + ".py"
     this_respredfile = res_pred_file + str(ite) + ".csv"
 
-    print("entering loop now...")
+
 
     # PICK CLASSIFICATION SCORING METHOD ------------------------------------------
     scoring_methods = ['log_loss', 'balanced_accuracy', 'roc_auc']
