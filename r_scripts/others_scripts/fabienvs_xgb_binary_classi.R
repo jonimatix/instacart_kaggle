@@ -68,11 +68,15 @@ orders <- fread(file.path(path, "orders.csv"))
 products <- fread(file.path(path, "products.csv"))
 
 
+
+
 # Reshape data ------------------------------------------------------------
 aisles$aisle <- as.factor(aisles$aisle)
 departments$department <- as.factor(departments$department)
 orders$eval_set <- as.factor(orders$eval_set)
 products$product_name <- as.factor(products$product_name)
+
+
 
 #tv map in aisle and department, then remove those datasets
 products <- products %>% 
@@ -82,14 +86,20 @@ products <- products %>%
 rm(aisles, departments)
 
 
+
+
 #tv map in the user_id to order_train
-ordert$user_id <- orders$user_id[match(ordert$order_id, orders$order_id)]
+ordert$user_id <- orders$user_id[match(ordert$order_id, orders$order_id)]  # match only returns FIRST match
+
+
 
 
 # join orders (header level) with order prior (item level)
 orders_products <- orders %>% inner_join(orderp, by = "order_id")
 
-# no longer need order prior
+
+
+# no longer need order prior -- this data is now captured in orders_products
 rm(orderp)
 gc()
 
