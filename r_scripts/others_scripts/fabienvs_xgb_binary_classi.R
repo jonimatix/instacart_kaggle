@@ -130,6 +130,11 @@ prd <- prd %>% select(-prod_reorders, -prod_first_orders, -prod_second_orders)
 rm(products)
 gc()
 
+
+
+
+
+
 # Users -------------------------------------------------------------------
 users <- orders %>%                      # using the 'orders' (header level) data...
     filter(eval_set == "prior") %>%      # filter down to "prior" data
@@ -141,7 +146,32 @@ users <- orders %>%                      # using the 'orders' (header level) dat
     )
 
 
+    # quick summary for all orders except for 'this' user's first order
+    us_pre <- orders_products %>%
+        filter(order_number > 1) %>%
+        group_by(user_id) %>%
+        summarise(
+            total_prods_not_in_first_order = n(),
+            total_dist_prods_not_in_first_order = n_distinct(product_id)
+        )
+    
+    # quick summary for all reordered product that a user ordered 
+    us_pre2 <- orders_products %>%
+        filter(reordered == 1) %>%
+        group_by(user_id) %>%
+        summarise(
+            total_reordered_prods = n(),
+            total_dist_reordered_prods = n_distinct(product_id)
+        )
+    
+        #' So far, tv has made:
+        #' total_prods_not_in_first_order
+        #' total_dist_prods_not_in_first_order
+        #' total_reordered_prods
+        #' total_dist_reordered_prods
 
+
+# summary with no where clause -- to be joined with both of the "pre's"
 us <- orders_products %>%            # starting with orders_products (item detail) data...
     group_by(user_id) %>%            # group by userid
     summarise( 
@@ -150,26 +180,53 @@ us <- orders_products %>%            # starting with orders_products (item detai
         user_distinct_products = n_distinct(product_id)  # total number of distinct products
     )
 
+    # tv join -- this doesn't change much, I'm just adding in my own stuff to the pre-existing 'us' object
+    us <- us %>% dplyr::left_join(us_pre)
+    us <- us %>% dplyr::left_join(us_pre2)
 
+
+head(data.frame(us))
+
+
+
+    # tv extra features
+    us$user_reorder_prod_ratio <- us$total_reordered_prods / us$total_prods_not_in_first_order
+    us$user_reorder_dist_prod_ratio <- us$total_dist_reordered_prods / us$total_dist_prods_not_in_first_order
+    us$user_reorder_dist_to_all_prods <- us$total_dist_reordered_prods / us$total_reordered_prods
+
+
+    # remove my extra stuff:
+    us$total_prods_not_in_first_order <- NULL
+    us$total_dist_prods_not_in_first_order <- NULL
+    us$total_reordered_prods <- NULL
+    us$total_dist_reordered_prods <- NULL
+    
+    head(data.frame(us))
+    
+    
+    
 
 # join in the header-level and item-level user data together
 users <- users %>% inner_join(us)
 users$user_average_basket <- users$user_total_products / users$user_orders
 
 
-
+# overwriting the 'us' object with this, which is just a selection of things in order-header table
 us <- orders %>%
     filter(eval_set != "prior") %>%
     select(user_id, order_id, eval_set,
            time_since_last_order = days_since_prior_order)
 
 
-
 users <- users %>% inner_join(us)
 
+head(data.frame(users))
 
 rm(us)
 gc()
+
+
+
 
 
 # Database ----------------------------------------------------------------

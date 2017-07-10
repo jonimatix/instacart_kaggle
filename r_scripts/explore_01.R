@@ -81,8 +81,6 @@ length(intersect(unique(order_prior$order_id), unique(orders$order_id))) == leng
 
 
 
-# View(orders[1:100,])
-
 
 
 hist(table(orders$user_id), col='light blue', main='Number of Orders per User', xlab='Number of Orders')
@@ -99,9 +97,13 @@ num_ord_p_user$eval_set <- ifelse(num_ord_p_user$user_id %in% train_users, 'trai
 
 library(ggplot2)
 
+
+
 # answer: basically identical
 ggplot(data=num_ord_p_user, aes(x=Freq, fill=eval_set)) +
     geom_density(alpha=0.3)
+
+
 
 rm(num_ord_p_user)
 
